@@ -47,6 +47,7 @@ For the code generation for plug and play do this:
 3. Wrap Real APIs (No Mock Data): Do NOT use local mock data arrays. Assume the website uses a backend API. The handler function must demonstrate making a real fetch() call to a hypothetical endpoint (e.g., /api/v1/search).
 4. Imperative API: Use the standard imperative format: navigator.modelContext.registerTool({ name, description, schema, handler }).
 5. Strict Schema: Provide a realistic JSON Schema for the schema property based on what the action requires (e.g., search queries, filter IDs).
+6. Formatting: The plugAndPlayCode MUST be beautifully formatted with proper indentation and newline characters (\\n). Do NOT minify or compress the code into a single line.
 
 OUTPUT FORMAT:
 Return a strict JSON array of objects matching this schema:
@@ -194,7 +195,7 @@ Return a strict JSON array of objects matching this schema:
               <div className="bg-amber-50 border border-amber-100 rounded-2xl p-6">
                 <h3 className="text-xl font-bold text-amber-900 flex items-center mb-2">
                   <Monitor className="mr-2 text-amber-500" />
-                  Convert UI Elements to WebMCP Tools
+                  Non-WebMCP Tools Detected
                 </h3>
                 <p className="text-amber-700 text-sm">We found interactive elements on the page that aren't WebMCP enabled. Here is the plug-and-play code to register them.</p>
               </div>
@@ -226,9 +227,9 @@ Return a strict JSON array of objects matching this schema:
                             <Copy size={12} className="mr-1" /> Copy
                           </button>
                         </div>
-                        <div className="p-3 text-xs font-mono text-zinc-300 overflow-x-auto">
-                          <Markdown>{"\`\`\`javascript\n" + tool.plugAndPlayCode + "\n\`\`\`"}</Markdown>
-                        </div>
+                        <pre className="p-4 text-xs font-mono text-zinc-300 overflow-x-auto whitespace-pre">
+                          <code>{tool.plugAndPlayCode}</code>
+                        </pre>
                       </div>
                     </div>
                   ))}
