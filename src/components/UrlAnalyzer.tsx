@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Search, Globe, CheckCircle2, XCircle, Code, Database, Loader2, Sparkles, AlertTriangle, Monitor, Activity, ServerCrash } from 'lucide-react';
+import { Search, Globe, CheckCircle2, XCircle, Code, Database, Loader2, Sparkles, AlertTriangle, Monitor, Activity, ServerCrash, Copy } from 'lucide-react';
 import { GoogleGenAI, Type } from "@google/genai";
 import Markdown from 'react-markdown';
 
@@ -13,13 +13,57 @@ interface ToolAnalysis {
   declarativeCode?: string;
 }
 
+interface GeneratedTool {
+  name: string;
+  description: string;
+  declarativeCode: string;
+}
+
 export const UrlAnalyzer: React.FC = () => {
   const [url, setUrl] = useState('');
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [isDetecting, setIsDetecting] = useState(false);
   const [results, setResults] = useState<ToolAnalysis[] | null>(null);
-  const [liveData, setLiveData] = useState<{enabled: boolean, tools: any[]} | null>(null);
+  const [liveData, setLiveData] = useState<{enabled: boolean, tools: any[], nonTools?: string[]} | null>(null);
+  const [generatedNonTools, setGeneratedNonTools] = useState<GeneratedTool[] | null>(null);
+  const [isGeneratingNonTools, setIsGeneratingNonTools] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const copyToClipboard = (text: string) => {
+    navigator.clipboard.writeText(text);
+  };
+
+  const generateNonToolsCode = async (nonToolsArray: string[]) => {
+    if (!nonToolsArray || nonToolsArray.length === 0) return;
+    setIsGeneratingNonTools(true);
+    try {
+      const response = await ai.models.generateContent({
+        model: "gemini-3-flash-preview",
+        contents: `Here is a list of interactive UI elements found on a website: ${JSON.stringify(nonToolsArray)}. For each one, write the exact JavaScript/TypeScript code required to register this action as a WebMCP tool. Provide the plug-and-play code using the standard navigator.modelContext polyfill format so a developer can copy and paste it directly into their codebase.`,
+        config: {
+          responseMimeType: "application/json",
+          responseSchema: {
+            type: Type.ARRAY,
+            items: {
+              type: Type.OBJECT,
+              properties: {
+                name: { type: Type.STRING },
+                description: { type: Type.STRING },
+                declarativeCode: { type: Type.STRING }
+              },
+              required: ["name", "description", "declarativeCode"]
+            }
+          }
+        }
+      });
+      const data = JSON.parse(response.text);
+      setGeneratedNonTools(data);
+    } catch (err) {
+      console.error("Failed to generate code for non-tools", err);
+    } finally {
+      setIsGeneratingNonTools(false);
+    }
+  };
 
   const analyzeUrl = async () => {
     if (!url) return;
@@ -82,6 +126,7 @@ export const UrlAnalyzer: React.FC = () => {
     setError(null);
     setResults(null);
     setLiveData(null);
+    setGeneratedNonTools(null);
 
     try {
       const response = await fetch('/api/detect-webmcp', {
@@ -100,6 +145,9 @@ export const UrlAnalyzer: React.FC = () => {
 
       const data = await response.json();
       setLiveData(data);
+      if (data.nonTools && data.nonTools.length > 0) {
+        generateNonToolsCode(data.nonTools);
+      }
     } catch (err: any) {
       console.error(err);
       setError(err.message || "An unexpected error occurred.");
@@ -172,14 +220,77 @@ export const UrlAnalyzer: React.FC = () => {
           </div>
 
           {liveData.enabled && liveData.tools.length > 0 && (
-            <div className="bg-zinc-900 rounded-2xl overflow-hidden border border-zinc-800">
-              <div className="px-4 py-3 bg-zinc-800 border-b border-zinc-700 flex items-center justify-between">
-                <span className="text-zinc-300 font-mono text-sm">Registered Tools JSON</span>
-                <Database size={16} className="text-zinc-500" />
+            <div className="space-y-6 mt-8">
+              <div className="bg-emerald-50 border border-emerald-100 rounded-2xl p-6">
+                <h3 className="text-xl font-bold text-emerald-900 flex items-center mb-2">
+                  <CheckCircle2 className="mr-2 text-emerald-500" />
+                  Detected WebMCP Tools
+                </h3>
+                <p className="text-emerald-700 text-sm">These tools are already registered and active on the live site.</p>
               </div>
-              <div className="p-4 text-sm font-mono text-zinc-300 overflow-x-auto">
-                <pre>{JSON.stringify(liveData.tools, null, 2)}</pre>
+              
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {liveData.tools.map((tool: any, idx: number) => (
+                  <div key={idx} className="bg-white p-5 rounded-2xl border border-zinc-200 shadow-sm hover:shadow-md transition-all">
+                    <div className="flex items-center space-x-2 mb-2">
+                      <h4 className="font-bold text-zinc-900">{tool.name || tool.title || 'Unnamed Tool'}</h4>
+                      <span className="flex items-center text-[10px] font-bold uppercase tracking-wider bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full">
+                        <CheckCircle2 size={10} className="mr-1" /> Active
+                      </span>
+                    </div>
+                    <p className="text-sm text-zinc-600 mb-4">{tool.description || 'No description provided.'}</p>
+                  </div>
+                ))}
               </div>
+            </div>
+          )}
+
+          {/* Generated Non-Tools Code */}
+          {liveData?.nonTools && liveData.nonTools.length > 0 && (
+            <div className="space-y-6 mt-8">
+              <div className="bg-amber-50 border border-amber-100 rounded-2xl p-6">
+                <h3 className="text-xl font-bold text-amber-900 flex items-center mb-2">
+                  <Monitor className="mr-2 text-amber-500" />
+                  Convert UI Elements to WebMCP Tools
+                </h3>
+                <p className="text-amber-700 text-sm">We found interactive elements on the page that aren't WebMCP enabled. Here is the plug-and-play code to register them.</p>
+              </div>
+
+              {isGeneratingNonTools ? (
+                <div className="flex items-center justify-center p-12 bg-white rounded-2xl border border-zinc-200">
+                  <Loader2 className="animate-spin text-indigo-500 mr-3" size={24} />
+                  <span className="text-zinc-600 font-medium">Generating plug-and-play code with Gemini...</span>
+                </div>
+              ) : generatedNonTools ? (
+                <div className="grid grid-cols-1 gap-6">
+                  {generatedNonTools.map((tool, idx) => (
+                    <div key={idx} className="bg-white p-5 rounded-2xl border border-zinc-200 shadow-sm hover:shadow-md transition-all">
+                      <div className="flex items-center space-x-2 mb-2">
+                        <h4 className="font-bold text-zinc-900">{tool.name}</h4>
+                        <span className="flex items-center text-[10px] font-bold uppercase tracking-wider bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full">
+                          <AlertTriangle size={10} className="mr-1" /> Needs Implementation
+                        </span>
+                      </div>
+                      <p className="text-sm text-zinc-600 mb-4">{tool.description}</p>
+                      
+                      <div className="bg-zinc-900 rounded-xl overflow-hidden border border-zinc-800 mt-4">
+                        <div className="px-3 py-1.5 bg-zinc-800 border-b border-zinc-700 flex items-center justify-between">
+                          <span className="text-zinc-400 text-xs font-mono">Plug-and-Play Code</span>
+                          <button 
+                            onClick={() => copyToClipboard(tool.declarativeCode)}
+                            className="text-zinc-400 hover:text-white transition-colors flex items-center text-xs bg-zinc-700 hover:bg-zinc-600 px-2 py-1 rounded"
+                          >
+                            <Copy size={12} className="mr-1" /> Copy
+                          </button>
+                        </div>
+                        <div className="p-3 text-xs font-mono text-zinc-300 overflow-x-auto">
+                          <Markdown>{"\`\`\`typescript\n" + tool.declarativeCode + "\n\`\`\`"}</Markdown>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : null}
             </div>
           )}
         </div>
