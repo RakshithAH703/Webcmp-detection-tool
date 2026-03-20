@@ -1,5 +1,5 @@
 import React from 'react';
-import { Copy, Check, FileCode, ShieldCheck, AlertCircle } from 'lucide-react';
+import { Copy, Check, FileCode, ShieldCheck, AlertTriangle } from 'lucide-react';
 
 export const ExtensionCode: React.FC = () => {
   const [copied, setCopied] = React.useState<string | null>(null);
@@ -11,8 +11,8 @@ export const ExtensionCode: React.FC = () => {
       content: `{
   "manifest_version": 3,
   "name": "WebMCP Detection Tool",
-  "version": "1.0",
-  "description": "Detects WebMCP tools using navigator.modelContextTesting",
+  "version": "1.1",
+  "description": "Detects WebMCP tools and identifies leaked UI actions",
   "permissions": ["activeTab", "scripting"],
   "action": {
     "default_popup": "popup.html"
@@ -33,23 +33,60 @@ if (!navigator.modelContextTesting) {
   console.warn('WebMCP Detection: navigator.modelContextTesting not found. Enable "WebMCP for testing" flag.');
 }
 
-function listTools() {
-  if (navigator.modelContextTesting) {
-    const tools = navigator.modelContextTesting.listTools();
-    chrome.runtime.sendMessage({ type: 'WEBMCP_TOOLS_FOUND', tools, url: location.href });
-  }
+async function analyzePageActions() {
+  // 1. Get the registered AI Tools
+  const aiTools = navigator.modelContextTesting ? navigator.modelContextTesting.listTools() : [];
+  const aiToolNames = aiTools.map(t => t.name.toLowerCase());
+
+  // 2. Scan the DOM for UI Actions (Non-Tools)
+  const domElements = document.querySelectorAll('button, a, [role="button"]');
+  const uiActions = Array.from(domElements)
+    .map(el => (el.innerText || el.getAttribute('aria-label') || '').trim().toLowerCase())
+    .filter(text => text.length > 0);
+
+  // 3. Categorize them
+  const nonTools = [];
+  const leakedTools = [];
+
+  // Keywords that should strictly be UI (Non-Tools)
+  const uiKeywords = ['theme', 'dark mode', 'sort', 'filter', 'next page', 'favorite', 'login', 'logout', 'menu'];
+
+  uiActions.forEach(action => {
+    // If a UI element is NOT in the AI tools, it's a properly isolated Non-Tool
+    if (!aiToolNames.includes(action)) {
+      nonTools.push(action);
+    }
+  });
+
+  aiToolNames.forEach(toolName => {
+    // If an AI tool contains a UI keyword, it's a LEAK (Bad practice)
+    if (uiKeywords.some(keyword => toolName.includes(keyword))) {
+      leakedTools.push(toolName);
+    }
+  });
+
+  return {
+    validAiTools: aiTools,
+    isolatedNonTools: [...new Set(nonTools)], // e.g., "Toggle Theme", "Sort by Price"
+    leakedUiTools: leakedTools // e.g., "setDarkMode" found in WebMCP
+  };
+}
+
+async function runAnalysis() {
+  const analysis = await analyzePageActions();
+  chrome.runtime.sendMessage({ type: 'WEBMCP_ANALYSIS_COMPLETE', analysis, url: location.href });
 }
 
 // Listening for Dynamic Tool Changes
 if (navigator.modelContextTesting) {
   if ('ontoolchange' in navigator.modelContextTesting.__proto__) {
-    navigator.modelContextTesting.addEventListener('toolchange', listTools);
+    navigator.modelContextTesting.addEventListener('toolchange', runAnalysis);
   } else if (navigator.modelContextTesting.registerToolsChangedCallback) {
-    navigator.modelContextTesting.registerToolsChangedCallback(listTools);
+    navigator.modelContextTesting.registerToolsChangedCallback(runAnalysis);
   }
   
   // Initial scan
-  listTools();
+  runAnalysis();
 }
 
 // Monitoring Execution Lifecycle
@@ -68,15 +105,21 @@ window.addEventListener('toolcancel', ({ toolName }) => {
 <html>
 <head>
   <style>
-    body { width: 300px; font-family: sans-serif; padding: 10px; }
-    .tool-item { border-bottom: 1px solid #eee; padding: 8px 0; }
-    .status { font-size: 12px; color: #666; }
-    .ready { color: green; font-weight: bold; }
+    body { width: 350px; font-family: system-ui, sans-serif; padding: 12px; margin: 0; background: #fafafa; }
+    h3 { margin-top: 0; font-size: 16px; color: #111; border-bottom: 1px solid #ddd; padding-bottom: 8px; }
+    .section { margin-bottom: 16px; background: #fff; padding: 10px; border-radius: 6px; border: 1px solid #eee; }
+    .section-title { font-size: 12px; font-weight: bold; text-transform: uppercase; margin-bottom: 8px; color: #555; }
+    .item { font-size: 13px; padding: 4px 0; border-bottom: 1px solid #f5f5f5; color: #333; }
+    .item:last-child { border-bottom: none; }
+    .badge-success { background: #dcfce7; color: #166534; padding: 2px 6px; border-radius: 4px; font-size: 10px; }
+    .badge-warning { background: #fef08a; color: #854d0e; padding: 2px 6px; border-radius: 4px; font-size: 10px; }
+    .badge-danger { background: #fee2e2; color: #991b1b; padding: 2px 6px; border-radius: 4px; font-size: 10px; }
+    .empty { font-size: 12px; color: #888; font-style: italic; }
   </style>
 </head>
 <body>
-  <h3>WebMCP Tools</h3>
-  <div id="tools-list">Scanning...</div>
+  <h3>WebMCP Inspector</h3>
+  <div id="content">Scanning page...</div>
   <script src="popup.js"></script>
 </body>
 </html>`
@@ -85,22 +128,51 @@ window.addEventListener('toolcancel', ({ toolName }) => {
       name: 'popup.js',
       language: 'javascript',
       content: `chrome.runtime.onMessage.addListener((message) => {
-  if (message.type === 'WEBMCP_TOOLS_FOUND') {
-    const list = document.getElementById('tools-list');
-    list.innerHTML = '';
-    if (message.tools.length === 0) {
-      list.innerHTML = 'No tools detected.';
-      return;
+  if (message.type === 'WEBMCP_ANALYSIS_COMPLETE') {
+    const content = document.getElementById('content');
+    const { validAiTools, isolatedNonTools, leakedUiTools } = message.analysis;
+    
+    let html = '';
+    
+    // 1. Valid AI Tools
+    html += '<div class="section"><div class="section-title">🤖 Registered AI Tools</div>';
+    if (validAiTools.length === 0) {
+      html += '<div class="empty">No tools detected.</div>';
+    } else {
+      validAiTools.forEach(tool => {
+        const isLeaked = leakedUiTools.includes(tool.name.toLowerCase());
+        if (!isLeaked) {
+          html += \`<div class="item"><strong>\${tool.name}</strong> <span class="badge-success">Valid</span></div>\`;
+        }
+      });
     }
-    message.tools.forEach(tool => {
-      const div = document.createElement('div');
-      div.className = 'tool-item';
-      div.innerHTML = \`
-        <strong>\${tool.name}</strong><br/>
-        <span class="status ready">Ready</span>
-      \`;
-      list.appendChild(div);
-    });
+    html += '</div>';
+
+    // 2. Leaked UI Tools (Warnings)
+    if (leakedUiTools.length > 0) {
+      html += '<div class="section" style="border-color: #fca5a5;"><div class="section-title" style="color: #dc2626;">⚠️ Leaked UI Tools (Bad Practice)</div>';
+      leakedUiTools.forEach(toolName => {
+        html += \`<div class="item"><strong>\${toolName}</strong> <span class="badge-danger">Exposed UI</span></div>\`;
+      });
+      html += '</div>';
+    }
+
+    // 3. Isolated Non-Tools (Good Practice)
+    html += '<div class="section"><div class="section-title">🖱️ Isolated UI Actions (Non-Tools)</div>';
+    if (isolatedNonTools.length === 0) {
+      html += '<div class="empty">No UI actions found.</div>';
+    } else {
+      // Show up to 10 to avoid clutter
+      isolatedNonTools.slice(0, 10).forEach(action => {
+        html += \`<div class="item">\${action} <span class="badge-warning">UI Only</span></div>\`;
+      });
+      if (isolatedNonTools.length > 10) {
+        html += \`<div class="item empty">...and \${isolatedNonTools.length - 10} more</div>\`;
+      }
+    }
+    html += '</div>';
+
+    content.innerHTML = html;
   }
 });`
     }
@@ -117,11 +189,10 @@ window.addEventListener('toolcancel', ({ toolName }) => {
       <div className="bg-blue-50 border-l-4 border-blue-500 p-4 rounded-r-lg">
         <div className="flex items-center">
           <ShieldCheck className="text-blue-500 mr-3" />
-          <h3 className="text-blue-800 font-bold">Chrome Extension Recreation</h3>
+          <h3 className="text-blue-800 font-bold">Chrome Extension Recreation (Upgraded)</h3>
         </div>
         <p className="text-blue-700 mt-2 text-sm">
-          This extension acts as a client wrapper for the experimental <code>navigator.modelContextTesting</code> API.
-          To use it, load these files as an "Unpacked Extension" in Chrome with the WebMCP flag enabled.
+          This upgraded extension not only detects WebMCP tools but also scans the DOM to differentiate between <strong>AI Tools</strong> and <strong>UI-Only Actions (Non-Tools)</strong>. It will warn you if UI actions (like "Dark Mode") are accidentally leaked to the AI.
         </p>
       </div>
 
