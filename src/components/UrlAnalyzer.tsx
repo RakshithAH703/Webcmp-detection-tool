@@ -16,7 +16,7 @@ interface ToolAnalysis {
 interface GeneratedTool {
   name: string;
   description: string;
-  declarativeCode: string;
+  ingestionCode: string;
 }
 
 export const UrlAnalyzer: React.FC = () => {
@@ -24,7 +24,7 @@ export const UrlAnalyzer: React.FC = () => {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [isDetecting, setIsDetecting] = useState(false);
   const [results, setResults] = useState<ToolAnalysis[] | null>(null);
-  const [liveData, setLiveData] = useState<{enabled: boolean, tools: any[], nonTools?: string[]} | null>(null);
+  const [liveData, setLiveData] = useState<{enabled: boolean, registeredTools: any[], actualNonTools?: string[]} | null>(null);
   const [generatedNonTools, setGeneratedNonTools] = useState<GeneratedTool[] | null>(null);
   const [isGeneratingNonTools, setIsGeneratingNonTools] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -33,13 +33,13 @@ export const UrlAnalyzer: React.FC = () => {
     navigator.clipboard.writeText(text);
   };
 
-  const generateNonToolsCode = async (nonToolsArray: string[]) => {
-    if (!nonToolsArray || nonToolsArray.length === 0) return;
+  const generateNonToolsCode = async (actualNonTools: string[]) => {
+    if (!actualNonTools || actualNonTools.length === 0) return;
     setIsGeneratingNonTools(true);
     try {
       const response = await ai.models.generateContent({
         model: "gemini-3-flash-preview",
-        contents: `Here is a list of interactive UI elements found on a website: ${JSON.stringify(nonToolsArray)}. For each one, write the exact JavaScript/TypeScript code required to register this action as a WebMCP tool. Provide the plug-and-play code using the standard navigator.modelContext polyfill format so a developer can copy and paste it directly into their codebase.`,
+        contents: `Here is a list of actual UI actions found on a website: ${JSON.stringify(actualNonTools)}. For each action, write a brief description and the exact JavaScript/TypeScript code required to ingest this into a codebase to make it WebMCP-enabled. Use the standard navigator.modelContext registration format.`,
         config: {
           responseMimeType: "application/json",
           responseSchema: {
@@ -49,9 +49,9 @@ export const UrlAnalyzer: React.FC = () => {
               properties: {
                 name: { type: Type.STRING },
                 description: { type: Type.STRING },
-                declarativeCode: { type: Type.STRING }
+                ingestionCode: { type: Type.STRING }
               },
-              required: ["name", "description", "declarativeCode"]
+              required: ["name", "description", "ingestionCode"]
             }
           }
         }
@@ -145,8 +145,8 @@ export const UrlAnalyzer: React.FC = () => {
 
       const data = await response.json();
       setLiveData(data);
-      if (data.nonTools && data.nonTools.length > 0) {
-        generateNonToolsCode(data.nonTools);
+      if (data.actualNonTools && data.actualNonTools.length > 0) {
+        generateNonToolsCode(data.actualNonTools);
       }
     } catch (err: any) {
       console.error(err);
@@ -214,23 +214,23 @@ export const UrlAnalyzer: React.FC = () => {
             </h3>
             <p className={liveData.enabled ? 'text-emerald-700' : 'text-red-700'}>
               {liveData.enabled 
-                ? `Successfully connected to the page and found ${liveData.tools.length} registered tools.` 
+                ? `Successfully connected to the page and found ${liveData.registeredTools?.length || 0} registered tools.` 
                 : 'The navigator.modelContext API was not found on this page.'}
             </p>
           </div>
 
-          {liveData.enabled && liveData.tools.length > 0 && (
+          {liveData.enabled && liveData.registeredTools && liveData.registeredTools.length > 0 && (
             <div className="space-y-6 mt-8">
               <div className="bg-emerald-50 border border-emerald-100 rounded-2xl p-6">
                 <h3 className="text-xl font-bold text-emerald-900 flex items-center mb-2">
                   <CheckCircle2 className="mr-2 text-emerald-500" />
-                  Detected WebMCP Tools
+                  Registered WebMCP Tools
                 </h3>
                 <p className="text-emerald-700 text-sm">These tools are already registered and active on the live site.</p>
               </div>
               
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                {liveData.tools.map((tool: any, idx: number) => (
+                {liveData.registeredTools.map((tool: any, idx: number) => (
                   <div key={idx} className="bg-white p-5 rounded-2xl border border-zinc-200 shadow-sm hover:shadow-md transition-all">
                     <div className="flex items-center space-x-2 mb-2">
                       <h4 className="font-bold text-zinc-900">{tool.name || tool.title || 'Unnamed Tool'}</h4>
@@ -246,7 +246,7 @@ export const UrlAnalyzer: React.FC = () => {
           )}
 
           {/* Generated Non-Tools Code */}
-          {liveData?.nonTools && liveData.nonTools.length > 0 && (
+          {liveData?.actualNonTools && liveData.actualNonTools.length > 0 && (
             <div className="space-y-6 mt-8">
               <div className="bg-amber-50 border border-amber-100 rounded-2xl p-6">
                 <h3 className="text-xl font-bold text-amber-900 flex items-center mb-2">
@@ -277,14 +277,14 @@ export const UrlAnalyzer: React.FC = () => {
                         <div className="px-3 py-1.5 bg-zinc-800 border-b border-zinc-700 flex items-center justify-between">
                           <span className="text-zinc-400 text-xs font-mono">Plug-and-Play Code</span>
                           <button 
-                            onClick={() => copyToClipboard(tool.declarativeCode)}
+                            onClick={() => copyToClipboard(tool.ingestionCode)}
                             className="text-zinc-400 hover:text-white transition-colors flex items-center text-xs bg-zinc-700 hover:bg-zinc-600 px-2 py-1 rounded"
                           >
                             <Copy size={12} className="mr-1" /> Copy
                           </button>
                         </div>
                         <div className="p-3 text-xs font-mono text-zinc-300 overflow-x-auto">
-                          <Markdown>{"\`\`\`typescript\n" + tool.declarativeCode + "\n\`\`\`"}</Markdown>
+                          <Markdown>{"\`\`\`typescript\n" + tool.ingestionCode + "\n\`\`\`"}</Markdown>
                         </div>
                       </div>
                     </div>

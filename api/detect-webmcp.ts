@@ -32,18 +32,43 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     // Execute script in the context of the loaded page
     const result = await page.evaluate(() => {
+      let enabled = false;
+      let registeredTools: any[] = [];
+
       // 1. Check for the standard API
       if (window.navigator && (window.navigator as any).modelContext && typeof (window.navigator as any).modelContext.getRegisteredTools === 'function') {
-        return { enabled: true, tools: (window.navigator as any).modelContext.getRegisteredTools() };
+        enabled = true;
+        registeredTools = (window.navigator as any).modelContext.getRegisteredTools();
       }
-      
       // 2. Fallback to the experimental testing API
-      if (window.navigator && (window.navigator as any).modelContextTesting && typeof (window.navigator as any).modelContextTesting.listTools === 'function') {
-        return { enabled: true, tools: (window.navigator as any).modelContextTesting.listTools() };
+      else if (window.navigator && (window.navigator as any).modelContextTesting && typeof (window.navigator as any).modelContextTesting.listTools === 'function') {
+        enabled = true;
+        registeredTools = (window.navigator as any).modelContextTesting.listTools();
       }
       
-      // Not found
-      return { enabled: false, tools: [] };
+      // Extract interactive elements
+      const interactiveElements = Array.from(document.querySelectorAll('button, a, [role="button"]'));
+      const labels = new Set<string>();
+      
+      interactiveElements.forEach(el => {
+        const text = (el.textContent || '').trim();
+        // Ignore empty or overly long strings
+        if (text && text.length > 0 && text.length <= 50) {
+          labels.add(text);
+        }
+      });
+
+      // Filter out registered tools
+      const registeredToolNames = new Set(registeredTools.map(t => (t.name || t.title || '').toLowerCase()));
+      
+      const actualNonTools: string[] = [];
+      labels.forEach(label => {
+        if (!registeredToolNames.has(label.toLowerCase())) {
+          actualNonTools.push(label);
+        }
+      });
+
+      return { enabled, registeredTools, actualNonTools };
     });
 
     return res.status(200).json(result);
