@@ -16,7 +16,7 @@ interface ToolAnalysis {
 interface GeneratedTool {
   name: string;
   description: string;
-  ingestionCode: string;
+  plugAndPlayCode: string;
 }
 
 export const UrlAnalyzer: React.FC = () => {
@@ -39,7 +39,17 @@ export const UrlAnalyzer: React.FC = () => {
     try {
       const response = await ai.models.generateContent({
         model: "gemini-3-flash-preview",
-        contents: `Here is a list of actual UI actions found on a website: ${JSON.stringify(actualNonTools)}. For each action, write a brief description and the exact JavaScript/TypeScript code required to ingest this into a codebase to make it WebMCP-enabled. Use the standard navigator.modelContext registration format.`,
+        contents: `Here is a raw list of interactive UI elements scraped from a webpage: ${JSON.stringify(actualNonTools)}. 
+Your job is to act as a strict WebMCP architect. Do NOT generate code for every item. 
+First, FILTER OUT all trivial UI elements. You MUST IGNORE:
+- Cookie banners (Accept, Deny, Settings)
+- Legal/Footer links (Privacy Policy, Terms, Disclaimer)
+- Pagination (1, 2, 3, Next, Previous, ...)
+- Simple navigation links (Home, About Us, Contact Us)
+- Granular UI state toggles (e.g., specific miles/radius buttons, specific filter checkboxes like 'Phase 1')
+
+Only keep HIGH-VALUE actions that an AI Agent would actually need a dedicated tool for (e.g., 'Search Clinical Trials', 'Apply Filters', 'Generate Report', 'Submit Form'). 
+For the filtered list of high-value actions ONLY, write a brief description and the exact JavaScript/TypeScript plug-and-play code to register it using \`navigator.modelContext.registerAction\`. The output array should be MUCH shorter than the input array because of this strict filtering.`,
         config: {
           responseMimeType: "application/json",
           responseSchema: {
@@ -49,9 +59,9 @@ export const UrlAnalyzer: React.FC = () => {
               properties: {
                 name: { type: Type.STRING },
                 description: { type: Type.STRING },
-                ingestionCode: { type: Type.STRING }
+                plugAndPlayCode: { type: Type.STRING }
               },
-              required: ["name", "description", "ingestionCode"]
+              required: ["name", "description", "plugAndPlayCode"]
             }
           }
         }
@@ -277,14 +287,14 @@ export const UrlAnalyzer: React.FC = () => {
                         <div className="px-3 py-1.5 bg-zinc-800 border-b border-zinc-700 flex items-center justify-between">
                           <span className="text-zinc-400 text-xs font-mono">Plug-and-Play Code</span>
                           <button 
-                            onClick={() => copyToClipboard(tool.ingestionCode)}
+                            onClick={() => copyToClipboard(tool.plugAndPlayCode)}
                             className="text-zinc-400 hover:text-white transition-colors flex items-center text-xs bg-zinc-700 hover:bg-zinc-600 px-2 py-1 rounded"
                           >
                             <Copy size={12} className="mr-1" /> Copy
                           </button>
                         </div>
                         <div className="p-3 text-xs font-mono text-zinc-300 overflow-x-auto">
-                          <Markdown>{"\`\`\`typescript\n" + tool.ingestionCode + "\n\`\`\`"}</Markdown>
+                          <Markdown>{"\`\`\`typescript\n" + tool.plugAndPlayCode + "\n\`\`\`"}</Markdown>
                         </div>
                       </div>
                     </div>
