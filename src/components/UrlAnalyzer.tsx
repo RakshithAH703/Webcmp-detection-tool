@@ -29,29 +29,33 @@ export const UrlAnalyzer: React.FC = () => {
     try {
       const response = await ai.models.generateContent({
         model: "gemini-3-flash-preview",
-        contents: `Here is a raw list of interactive UI elements scraped from a webpage: ${JSON.stringify(actualNonTools)}. 
-Your job is to act as a strict WebMCP architect. Do NOT generate code for every item. 
-First, FILTER OUT all trivial UI elements. You MUST IGNORE:
+        contents: `You are an expert WebMCP Architect. I am providing a raw list of interactive UI elements scraped from a live webpage: ${JSON.stringify(actualNonTools)}.
+
+STEP 1: FILTER THE LIST (AGENT-CENTRIC FOCUS)
+You must strictly curate this list based on what an AI Agent actually needs to interact with the system's data and business logic.
+
+**DO NOT INCLUDE (Drop these completely):**
+- Visual Navigation (e.g., 'Home', 'Dashboard', 'Menu', 'Back')
 - Cookie banners (Accept, Deny, Settings)
 - Legal/Footer links (Privacy Policy, Terms, Disclaimer)
-- Pagination (1, 2, 3, Next, Previous, ...)
-- Simple navigation links (Home, About Us, Contact Us)
-- Granular UI state toggles (e.g., specific miles/radius buttons, specific filter checkboxes like 'Phase 1')
+- Pagination numbers and symbols (1, 2, 3, Next, Previous, ...)
+- Granular UI state toggles or specific values (e.g., '10 mi', 'Phase 1', 'Status Ascending')
 
-Only keep HIGH-VALUE actions that an AI Agent would actually need a dedicated tool for (e.g., 'Search Clinical Trials', 'Apply Filters', 'Generate Report', 'Submit Form'). 
-For the filtered list of high-value actions ONLY, write a brief description and the exact JavaScript plug-and-play code to register it. The output array should be MUCH shorter than the input array because of this strict filtering.
+**MUST INCLUDE (Keep these high-value, agent-actionable features):**
+- Search and Querying (e.g., 'Search', 'Search Clinical Trials', 'Apply Filters')
+- Data Retrieval and Inspection (e.g., 'View Study', 'View Details', 'Compare', 'Reports')
+- Data Submission and Forms (e.g., 'Contact Us', 'Submit Form', 'Generate Report')
 
-For the code generation for plug and play do this:
-1. Traditional JS / Drop-in Ready: The code must be written in modern Vanilla JavaScript. Wrap it in a self-contained initialization function (e.g., function initWebMCPTools() { ... }) so developers can drop it into any existing codebase.
-2. Graceful Degradation: The code MUST check if ('modelContext' in navigator) before attempting to register anything.
-3. Wrap Real APIs (No Mock Data): Do NOT use local mock data arrays. Assume the website uses a backend API. The handler function must demonstrate making a real fetch() call to a hypothetical endpoint (e.g., /api/v1/search).
-4. Imperative API: Use the standard imperative format: navigator.modelContext.registerTool({ name, description, schema, handler }).
-5. Strict Schema: Provide a realistic JSON Schema for the schema property based on what the action requires (e.g., search queries, filter IDs).
+STEP 2: GENERATE PRODUCTION-GRADE CODE
+For the filtered list of high-value actions ONLY, generate the exact 'plug-and-play' JavaScript code to register the tool.
+1. Write modern Vanilla JavaScript wrapped in an initialization function (e.g., \`function init[ActionName]Tool() { ... }\`).
+2. Include graceful degradation: \`if (!('modelContext' in navigator)) return;\`
+3. Use the imperative API: \`navigator.modelContext.registerTool({ name, description, schema, handler })\`.
+4. The \`handler\` MUST demonstrate making a real \`fetch()\` call to a hypothetical backend API (e.g., \`/api/v1/...\`). Do NOT use local mock data arrays.
+5. Provide a realistic JSON Schema for the \`schema\` property based on the action (e.g., search parameters, form fields, or record IDs).
 6. Formatting: The plugAndPlayCode MUST be beautifully formatted with proper indentation and newline characters (\\n). Do NOT minify or compress the code into a single line.
 
-OUTPUT FORMAT:
-Return a strict JSON array of objects matching this schema:
-{ name: string, description: string, plugAndPlayCode: string }`,
+Return a strict JSON array of objects: \`{ name: string, description: string, plugAndPlayCode: string }\``,
         config: {
           responseMimeType: "application/json",
           responseSchema: {
