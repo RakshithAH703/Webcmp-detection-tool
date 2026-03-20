@@ -1,0 +1,5 @@
+{
+  "name": "WebMCP Detective & Analyzer",
+  "description": "A comprehensive toolset for WebMCP development, featuring a Chrome extension recreation and a URL-based readiness analyzer with declarative function generation.",
+  "requestFramePermissions": []
+}
