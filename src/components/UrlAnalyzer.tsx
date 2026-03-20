@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import { Globe, CheckCircle2, Loader2, AlertTriangle, Monitor, Activity, ServerCrash, Copy } from 'lucide-react';
+import { Globe, CheckCircle2, Loader2, AlertTriangle, Monitor, Activity, ServerCrash, Copy, ScanLine } from 'lucide-react';
 import { GoogleGenAI, Type } from "@google/genai";
 import Markdown from 'react-markdown';
+import { motion } from 'motion/react';
 
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
@@ -120,15 +121,15 @@ Return a strict JSON array of objects: \`{ name: string, description: string, pl
     <div className="space-y-8">
       <div className="max-w-2xl mx-auto">
         <div className="relative group">
-          <div className="absolute -inset-1 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-2xl blur opacity-25 group-hover:opacity-50 transition duration-1000 group-hover:duration-200"></div>
-          <div className="relative flex items-center bg-white rounded-2xl shadow-xl p-2 border border-zinc-100">
-            <Globe className="ml-4 text-zinc-400" size={20} />
+          <div className="absolute -inset-1 bg-gradient-to-r from-indigo-500 to-blue-500 rounded-2xl blur opacity-25 group-hover:opacity-50 transition duration-1000 group-hover:duration-200"></div>
+          <div className="relative flex items-center bg-slate-900/40 backdrop-blur-xl rounded-2xl shadow-2xl p-2 border border-white/5 group-hover:border-indigo-500/30 transition-colors">
+            <Globe className="ml-4 text-slate-400" size={20} />
             <input
               type="text"
               value={url}
               onChange={(e) => setUrl(e.target.value)}
               placeholder="Enter website URL to analyze (e.g., https://example.com)"
-              className="flex-1 px-4 py-3 outline-none text-zinc-700 placeholder-zinc-400 bg-transparent"
+              className="flex-1 px-4 py-3 outline-none text-slate-200 placeholder-slate-500 bg-transparent"
               onKeyDown={(e) => e.key === 'Enter' && scanWebsite()}
             />
           </div>
@@ -138,110 +139,156 @@ Return a strict JSON array of objects: \`{ name: string, description: string, pl
           <button
             onClick={scanWebsite}
             disabled={isDetecting || !url}
-            className="w-full sm:w-auto bg-emerald-600 text-white px-8 py-3 rounded-xl font-medium hover:bg-emerald-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2"
+            className="w-full sm:w-auto bg-indigo-500 text-white px-8 py-3 rounded-xl font-medium hover:bg-indigo-600 hover:scale-[1.02] transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 flex items-center justify-center space-x-2 shadow-[0_0_20px_rgba(99,102,241,0.3)] hover:shadow-[0_0_25px_rgba(99,102,241,0.5)] border border-indigo-400/20"
           >
-            {isDetecting ? <Loader2 className="animate-spin" size={18} /> : <Activity size={18} />}
-            <span>Scan Website</span>
+            {isDetecting ? <ScanLine className="animate-pulse" size={18} /> : <Activity size={18} />}
+            <span>{isDetecting ? 'Analyzing DOM...' : 'Scan Website'}</span>
           </button>
         </div>
       </div>
 
       {error && (
-        <div className="bg-red-50 text-red-600 p-4 rounded-xl border border-red-100 text-center max-w-2xl mx-auto">
+        <motion.div 
+          initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
+          className="bg-red-500/10 text-red-400 p-4 rounded-2xl border border-red-500/20 text-center max-w-2xl mx-auto backdrop-blur-xl"
+        >
           {error}
-        </div>
+        </motion.div>
+      )}
+
+      {/* Loading State Animation */}
+      {isDetecting && (
+        <motion.div 
+          initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+          className="flex flex-col items-center justify-center py-12 space-y-4"
+        >
+          <div className="relative flex items-center justify-center w-16 h-16">
+            <div className="absolute inset-0 rounded-full border-t-2 border-indigo-500 animate-spin"></div>
+            <div className="absolute inset-2 rounded-full border-r-2 border-blue-400 animate-spin animation-delay-150"></div>
+            <div className="absolute inset-4 rounded-full border-b-2 border-indigo-300 animate-spin animation-delay-300"></div>
+            <ScanLine className="text-indigo-400 animate-pulse" size={20} />
+          </div>
+          <div className="text-slate-400 font-mono text-sm animate-pulse">
+            Scanning DOM & Extracting Interactive Elements...
+          </div>
+        </motion.div>
       )}
 
       {/* Live Data Results */}
-      {liveData && (
-        <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-          <div className={`p-6 rounded-2xl border ${liveData.enabled ? 'bg-emerald-50 border-emerald-200' : 'bg-red-50 border-red-200'}`}>
-            <h3 className={`text-xl font-bold flex items-center mb-2 ${liveData.enabled ? 'text-emerald-900' : 'text-red-900'}`}>
+      {liveData && !isDetecting && (
+        <motion.div 
+          initial="hidden" animate="visible"
+          variants={{
+            hidden: { opacity: 0 },
+            visible: { opacity: 1, transition: { staggerChildren: 0.1 } }
+          }}
+          className="space-y-6"
+        >
+          <motion.div 
+            variants={{ hidden: { opacity: 0, y: 20 }, visible: { opacity: 1, y: 0 } }}
+            className={`p-6 rounded-3xl border backdrop-blur-xl shadow-2xl ${liveData.enabled ? 'bg-emerald-400/10 border-emerald-400/20' : 'bg-red-500/10 border-red-500/20'}`}
+          >
+            <h3 className={`text-xl font-bold flex items-center mb-2 ${liveData.enabled ? 'text-emerald-400' : 'text-red-400'}`}>
               {liveData.enabled ? <CheckCircle2 className="mr-2" /> : <ServerCrash className="mr-2" />}
               {liveData.enabled ? 'WebMCP Enabled' : 'WebMCP Not Enabled'}
             </h3>
-            <p className={liveData.enabled ? 'text-emerald-700' : 'text-red-700'}>
+            <p className={liveData.enabled ? 'text-emerald-400/80' : 'text-red-400/80'}>
               {liveData.enabled 
                 ? `Successfully connected to the page and found ${liveData.registeredTools?.length || 0} registered tools.` 
                 : 'The navigator.modelContext API was not found on this page.'}
             </p>
-          </div>
+          </motion.div>
 
           {liveData.enabled && liveData.registeredTools && liveData.registeredTools.length > 0 && (
-            <div className="space-y-6 mt-8">
-              <div className="bg-emerald-50 border border-emerald-100 rounded-2xl p-6">
-                <h3 className="text-xl font-bold text-emerald-900 flex items-center mb-2">
-                  <CheckCircle2 className="mr-2 text-emerald-500" />
+            <motion.div variants={{ hidden: { opacity: 0, y: 20 }, visible: { opacity: 1, y: 0 } }} className="space-y-6 mt-8">
+              <div className="bg-slate-900/40 backdrop-blur-xl border border-white/5 shadow-2xl rounded-3xl p-6">
+                <h3 className="text-xl font-bold text-slate-200 flex items-center mb-2">
+                  <CheckCircle2 className="mr-2 text-emerald-400" />
                   Registered WebMCP Tools
                 </h3>
-                <p className="text-emerald-700 text-sm">These tools are already registered and active on the live site.</p>
+                <p className="text-slate-400 text-sm">These tools are already registered and active on the live site.</p>
               </div>
               
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 {liveData.registeredTools.map((tool: any, idx: number) => (
-                  <div key={idx} className="bg-white p-5 rounded-2xl border border-zinc-200 shadow-sm hover:shadow-md transition-all">
+                  <motion.div 
+                    whileHover={{ scale: 1.02 }}
+                    key={idx} 
+                    className="bg-slate-900/40 backdrop-blur-xl p-5 rounded-2xl border border-white/5 shadow-2xl hover:border-emerald-400/30 transition-all"
+                  >
                     <div className="flex items-center space-x-2 mb-2">
-                      <h4 className="font-bold text-zinc-900">{tool.name || tool.title || 'Unnamed Tool'}</h4>
-                      <span className="flex items-center text-[10px] font-bold uppercase tracking-wider bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full">
-                        <CheckCircle2 size={10} className="mr-1" /> Active
+                      <h4 className="font-bold text-slate-200">{tool.name || tool.title || 'Unnamed Tool'}</h4>
+                      <span className="flex items-center text-[10px] font-bold uppercase tracking-wider bg-emerald-400/10 text-emerald-400 border border-emerald-400/20 px-2 py-0.5 rounded-full">
+                        <span className="relative flex h-2 w-2 mr-1.5">
+                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                          <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                        </span>
+                        Active
                       </span>
                     </div>
-                    <p className="text-sm text-zinc-600 mb-4">{tool.description || 'No description provided.'}</p>
-                  </div>
+                    <p className="text-sm text-slate-400 mb-4">{tool.description || 'No description provided.'}</p>
+                  </motion.div>
                 ))}
               </div>
-            </div>
+            </motion.div>
           )}
 
           {/* Generated Non-Tools Code */}
           {liveData?.actualNonTools && liveData.actualNonTools.length > 0 && (
-            <div className="space-y-6 mt-8">
-              <div className="bg-amber-50 border border-amber-100 rounded-2xl p-6">
-                <h3 className="text-xl font-bold text-amber-900 flex items-center mb-2">
-                  <Monitor className="mr-2 text-amber-500" />
+            <motion.div variants={{ hidden: { opacity: 0, y: 20 }, visible: { opacity: 1, y: 0 } }} className="space-y-6 mt-8">
+              <div className="bg-slate-900/40 backdrop-blur-xl border border-white/5 shadow-2xl rounded-3xl p-6">
+                <h3 className="text-xl font-bold text-slate-200 flex items-center mb-2">
+                  <Monitor className="mr-2 text-amber-400" />
                   Non-WebMCP Tools Detected
                 </h3>
-                <p className="text-amber-700 text-sm">We found interactive elements on the page that aren't WebMCP enabled. Here is the plug-and-play code to register them.</p>
+                <p className="text-slate-400 text-sm">We found interactive elements on the page that aren't WebMCP enabled. Here is the plug-and-play code to register them.</p>
               </div>
 
               {isGeneratingNonTools ? (
-                <div className="flex items-center justify-center p-12 bg-white rounded-2xl border border-zinc-200">
-                  <Loader2 className="animate-spin text-indigo-500 mr-3" size={24} />
-                  <span className="text-zinc-600 font-medium">Generating plug-and-play code with Gemini...</span>
+                <div className="flex flex-col items-center justify-center p-12 bg-slate-900/40 backdrop-blur-xl rounded-3xl border border-white/5 shadow-2xl space-y-4">
+                  <div className="relative flex items-center justify-center w-12 h-12">
+                    <div className="absolute inset-0 rounded-full border-t-2 border-amber-500 animate-spin"></div>
+                    <div className="absolute inset-2 rounded-full border-r-2 border-orange-400 animate-spin animation-delay-150"></div>
+                  </div>
+                  <span className="text-slate-400 font-mono text-sm animate-pulse">Generating plug-and-play code with Gemini...</span>
                 </div>
               ) : generatedNonTools ? (
                 <div className="grid grid-cols-1 gap-6">
                   {generatedNonTools.map((tool, idx) => (
-                    <div key={idx} className="bg-white p-5 rounded-2xl border border-zinc-200 shadow-sm hover:shadow-md transition-all">
+                    <motion.div 
+                      whileHover={{ scale: 1.01 }}
+                      key={idx} 
+                      className="bg-slate-900/40 backdrop-blur-xl p-6 rounded-3xl border border-white/5 shadow-2xl hover:border-amber-500/30 transition-all"
+                    >
                       <div className="flex items-center space-x-2 mb-2">
-                        <h4 className="font-bold text-zinc-900">{tool.name}</h4>
-                        <span className="flex items-center text-[10px] font-bold uppercase tracking-wider bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full">
+                        <h4 className="font-bold text-slate-200">{tool.name}</h4>
+                        <span className="flex items-center text-[10px] font-bold uppercase tracking-wider bg-amber-500/10 text-amber-400 border border-amber-500/20 px-2 py-0.5 rounded-full">
                           <AlertTriangle size={10} className="mr-1" /> Needs Implementation
                         </span>
                       </div>
-                      <p className="text-sm text-zinc-600 mb-4">{tool.description}</p>
+                      <p className="text-sm text-slate-400 mb-4">{tool.description}</p>
                       
-                      <div className="bg-zinc-900 rounded-xl overflow-hidden border border-zinc-800 mt-4">
-                        <div className="px-3 py-1.5 bg-zinc-800 border-b border-zinc-700 flex items-center justify-between">
-                          <span className="text-zinc-400 text-xs font-mono">Plug-and-Play Code</span>
+                      <div className="bg-slate-950/80 rounded-xl overflow-hidden border border-white/10 mt-4 shadow-inner">
+                        <div className="px-4 py-2 bg-slate-900/80 border-b border-white/5 flex items-center justify-between">
+                          <span className="text-slate-400 text-xs font-mono">Plug-and-Play Code</span>
                           <button 
                             onClick={() => copyToClipboard(tool.plugAndPlayCode)}
-                            className="text-zinc-400 hover:text-white transition-colors flex items-center text-xs bg-zinc-700 hover:bg-zinc-600 px-2 py-1 rounded"
+                            className="text-slate-400 hover:text-white transition-colors flex items-center text-xs bg-white/5 hover:bg-white/10 px-2 py-1 rounded-lg border border-white/5"
                           >
                             <Copy size={12} className="mr-1" /> Copy
                           </button>
                         </div>
-                        <pre className="p-4 text-xs font-mono text-zinc-300 overflow-x-auto whitespace-pre">
+                        <pre className="p-4 text-xs font-mono text-slate-300 overflow-x-auto whitespace-pre">
                           <code>{tool.plugAndPlayCode}</code>
                         </pre>
                       </div>
-                    </div>
+                    </motion.div>
                   ))}
                 </div>
               ) : null}
-            </div>
+            </motion.div>
           )}
-        </div>
+        </motion.div>
       )}
     </div>
   );
