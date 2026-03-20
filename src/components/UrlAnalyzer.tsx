@@ -39,7 +39,18 @@ First, FILTER OUT all trivial UI elements. You MUST IGNORE:
 - Granular UI state toggles (e.g., specific miles/radius buttons, specific filter checkboxes like 'Phase 1')
 
 Only keep HIGH-VALUE actions that an AI Agent would actually need a dedicated tool for (e.g., 'Search Clinical Trials', 'Apply Filters', 'Generate Report', 'Submit Form'). 
-For the filtered list of high-value actions ONLY, write a brief description and the exact JavaScript/TypeScript plug-and-play code to register it using \`navigator.modelContext.registerAction\`. The output array should be MUCH shorter than the input array because of this strict filtering.`,
+For the filtered list of high-value actions ONLY, write a brief description and the exact JavaScript plug-and-play code to register it. The output array should be MUCH shorter than the input array because of this strict filtering.
+
+For the code generation for plug and play do this:
+1. Traditional JS / Drop-in Ready: The code must be written in modern Vanilla JavaScript. Wrap it in a self-contained initialization function (e.g., function initWebMCPTools() { ... }) so developers can drop it into any existing codebase.
+2. Graceful Degradation: The code MUST check if ('modelContext' in navigator) before attempting to register anything.
+3. Wrap Real APIs (No Mock Data): Do NOT use local mock data arrays. Assume the website uses a backend API. The handler function must demonstrate making a real fetch() call to a hypothetical endpoint (e.g., /api/v1/search).
+4. Imperative API: Use the standard imperative format: navigator.modelContext.registerTool({ name, description, schema, handler }).
+5. Strict Schema: Provide a realistic JSON Schema for the schema property based on what the action requires (e.g., search queries, filter IDs).
+
+OUTPUT FORMAT:
+Return a strict JSON array of objects matching this schema:
+{ name: string, description: string, plugAndPlayCode: string }`,
         config: {
           responseMimeType: "application/json",
           responseSchema: {
@@ -216,7 +227,7 @@ For the filtered list of high-value actions ONLY, write a brief description and 
                           </button>
                         </div>
                         <div className="p-3 text-xs font-mono text-zinc-300 overflow-x-auto">
-                          <Markdown>{"\`\`\`typescript\n" + tool.plugAndPlayCode + "\n\`\`\`"}</Markdown>
+                          <Markdown>{"\`\`\`javascript\n" + tool.plugAndPlayCode + "\n\`\`\`"}</Markdown>
                         </div>
                       </div>
                     </div>
