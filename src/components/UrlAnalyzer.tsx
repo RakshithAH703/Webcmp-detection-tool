@@ -134,6 +134,12 @@ Return a strict JSON array of objects: \`{ name: string, description: string, pl
       }
 
       const data = await response.json();
+      
+      // Log Cleanup: Remove "register webmcp tool" from the detected tools
+      if (data.actualNonTools) {
+        data.actualNonTools = data.actualNonTools.filter((item: string) => !item.toLowerCase().includes('register webmcp tool'));
+      }
+      
       setLiveData(data);
       if (data.actualNonTools && data.actualNonTools.length > 0) {
         generateNonToolsCode(data.actualNonTools);
@@ -293,7 +299,7 @@ Return a strict JSON array of objects: \`{ name: string, description: string, pl
                     <div className="absolute inset-0 rounded-full border-t-2 border-amber-500 animate-spin"></div>
                     <div className="absolute inset-2 rounded-full border-r-2 border-orange-400 animate-spin animation-delay-150"></div>
                   </div>
-                  <span className="text-slate-400 font-mono text-sm animate-pulse">Generating plug-and-play code with Gemini...</span>
+                  <span className="text-slate-400 font-mono text-sm animate-pulse">Suggested code for WebMCP enablement...</span>
                 </div>
               ) : generatedNonTools ? (
                 <div className="grid grid-cols-1 gap-6">
