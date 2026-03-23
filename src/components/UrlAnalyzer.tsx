@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Globe, CheckCircle2, Loader2, AlertTriangle, Monitor, Activity, ServerCrash, Copy, ScanLine } from 'lucide-react';
 import { GoogleGenAI, Type } from "@google/genai";
 import Markdown from 'react-markdown';
@@ -19,6 +19,20 @@ export const UrlAnalyzer: React.FC = () => {
   const [generatedNonTools, setGeneratedNonTools] = useState<GeneratedTool[] | null>(null);
   const [isGeneratingNonTools, setIsGeneratingNonTools] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [messageIndex, setMessageIndex] = useState(0);
+
+  const scanMessages = ["Extracting DOM...", "Looking for WebMCP...", "Identifying tools..."];
+
+  useEffect(() => {
+    if (!isDetecting) {
+      setMessageIndex(0);
+      return;
+    }
+    const interval = setInterval(() => {
+      setMessageIndex((prev) => Math.min(prev + 1, scanMessages.length - 1));
+    }, 2000);
+    return () => clearInterval(interval);
+  }, [isDetecting]);
 
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
@@ -54,7 +68,22 @@ For the filtered list of high-value actions ONLY, generate the exact 'plug-and-p
 3. Use the imperative API: \`navigator.modelContext.registerTool({ name, description, schema, handler })\`.
 4. The \`handler\` MUST demonstrate making a real \`fetch()\` call to a hypothetical backend API (e.g., \`/api/v1/...\`). Do NOT use local mock data arrays.
 5. Provide a realistic JSON Schema for the \`schema\` property based on the action (e.g., search parameters, form fields, or record IDs).
-6. Formatting: The plugAndPlayCode MUST be beautifully formatted with proper indentation and newline characters (\\n). Do NOT minify or compress the code into a single line.
+6. Non-WebMCP Implementation Warning: Immediately after the schema closing brace \`},\`, you MUST insert this exact comment: \`//update following code with your implementation\`.
+Example:
+schema: {
+  type: "object",
+  properties: {
+    query: { type: "string", description: "The search term to look for." },
+    limit: { type: "integer", description: "Maximum number of results to return." }
+  },
+  required: ["query"]
+}, //update following code with your implementation
+async handler({ query, limit = 10 }) {
+  const response = await fetch(\`/api/v1/search?q=\${encodeURIComponent(query)}&limit=\${limit}\`);
+  if (!response.ok) throw new Error("Search request failed");
+  return await response.json();
+}
+7. Formatting: The plugAndPlayCode MUST be beautifully formatted with proper indentation and newline characters (\\n). Do NOT minify or compress the code into a single line.
 
 Return a strict JSON array of objects: \`{ name: string, description: string, plugAndPlayCode: string }\``,
         config: {
@@ -169,7 +198,7 @@ Return a strict JSON array of objects: \`{ name: string, description: string, pl
             <ScanLine className="text-indigo-400 animate-pulse" size={20} />
           </div>
           <div className="text-slate-400 font-mono text-sm animate-pulse">
-            Scanning DOM & Extracting Interactive Elements...
+            {scanMessages[messageIndex]}
           </div>
         </motion.div>
       )}
@@ -194,13 +223,27 @@ Return a strict JSON array of objects: \`{ name: string, description: string, pl
             </h3>
             <p className={liveData.enabled ? 'text-emerald-400/80' : 'text-red-400/80'}>
               {liveData.enabled 
-                ? `Successfully connected to the page and found ${liveData.registeredTools?.length || 0} registered tools.` 
+                ? `${liveData.registeredTools?.length || 0} out of ${(liveData.registeredTools?.length || 0) + (liveData.actualNonTools?.length || 0)} WebMCP tools detected.` 
                 : 'The navigator.modelContext API was not found on this page.'}
             </p>
           </motion.div>
 
+          {/* Post-Scan Navigation UI */}
+          <motion.div variants={{ hidden: { opacity: 0, y: 10 }, visible: { opacity: 1, y: 0 } }} className="flex space-x-4 mt-4">
+            {(liveData.registeredTools && liveData.registeredTools.length > 0) && (
+              <button onClick={() => document.getElementById('webmcp-tools')?.scrollIntoView({ behavior: 'smooth' })} className="px-4 py-2 bg-emerald-500/10 text-emerald-400 rounded-lg hover:bg-emerald-500/20 transition-colors border border-emerald-500/20 text-sm font-medium">
+                WebMCP Tools
+              </button>
+            )}
+            {(liveData.actualNonTools && liveData.actualNonTools.length > 0) && (
+              <button onClick={() => document.getElementById('non-webmcp-tools')?.scrollIntoView({ behavior: 'smooth' })} className="px-4 py-2 bg-amber-500/10 text-amber-400 rounded-lg hover:bg-amber-500/20 transition-colors border border-amber-500/20 text-sm font-medium">
+                Non-WebMCP Tools
+              </button>
+            )}
+          </motion.div>
+
           {liveData.enabled && liveData.registeredTools && liveData.registeredTools.length > 0 && (
-            <motion.div variants={{ hidden: { opacity: 0, y: 20 }, visible: { opacity: 1, y: 0 } }} className="space-y-6 mt-8">
+            <motion.div id="webmcp-tools" variants={{ hidden: { opacity: 0, y: 20 }, visible: { opacity: 1, y: 0 } }} className="space-y-6 mt-8 scroll-mt-24">
               <div className="bg-slate-900/40 backdrop-blur-xl border border-white/5 shadow-2xl rounded-3xl p-6">
                 <h3 className="text-xl font-bold text-slate-200 flex items-center mb-2">
                   <CheckCircle2 className="mr-2 text-emerald-400" />
@@ -235,7 +278,7 @@ Return a strict JSON array of objects: \`{ name: string, description: string, pl
 
           {/* Generated Non-Tools Code */}
           {liveData?.actualNonTools && liveData.actualNonTools.length > 0 && (
-            <motion.div variants={{ hidden: { opacity: 0, y: 20 }, visible: { opacity: 1, y: 0 } }} className="space-y-6 mt-8">
+            <motion.div id="non-webmcp-tools" variants={{ hidden: { opacity: 0, y: 20 }, visible: { opacity: 1, y: 0 } }} className="space-y-6 mt-8 scroll-mt-24">
               <div className="bg-slate-900/40 backdrop-blur-xl border border-white/5 shadow-2xl rounded-3xl p-6">
                 <h3 className="text-xl font-bold text-slate-200 flex items-center mb-2">
                   <Monitor className="mr-2 text-amber-400" />
@@ -270,7 +313,7 @@ Return a strict JSON array of objects: \`{ name: string, description: string, pl
                       
                       <div className="bg-slate-950/80 rounded-xl overflow-hidden border border-white/10 mt-4 shadow-inner">
                         <div className="px-4 py-2 bg-slate-900/80 border-b border-white/5 flex items-center justify-between">
-                          <span className="text-slate-400 text-xs font-mono">Plug-and-Play Code</span>
+                          <span className="text-slate-400 text-xs font-mono">Suggested code for WebMCP enablement</span>
                           <button 
                             onClick={() => copyToClipboard(tool.plugAndPlayCode)}
                             className="text-slate-400 hover:text-white transition-colors flex items-center text-xs bg-white/5 hover:bg-white/10 px-2 py-1 rounded-lg border border-white/5"
