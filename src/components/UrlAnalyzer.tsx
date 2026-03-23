@@ -229,7 +229,7 @@ Return a strict JSON array of objects: \`{ name: string, description: string, pl
             </h3>
             <p className={liveData.enabled ? 'text-emerald-400/80' : 'text-red-400/80'}>
               {liveData.enabled 
-                ? `${liveData.registeredTools?.length || 0} out of ${(liveData.registeredTools?.length || 0) + (liveData.actualNonTools?.length || 0)} WebMCP tools detected.` 
+                ? `${liveData.registeredTools?.length || 0} out of ${(liveData.registeredTools?.length || 0) + (generatedNonTools ? generatedNonTools.length : (liveData.actualNonTools?.length || 0))} WebMCP tools detected.` 
                 : 'The navigator.modelContext API was not found on this page.'}
             </p>
           </motion.div>
@@ -253,9 +253,9 @@ Return a strict JSON array of objects: \`{ name: string, description: string, pl
               <div className="bg-slate-900/40 backdrop-blur-xl border border-white/5 shadow-2xl rounded-3xl p-6">
                 <h3 className="text-xl font-bold text-slate-200 flex items-center mb-2">
                   <CheckCircle2 className="mr-2 text-emerald-400" />
-                  Registered WebMCP Tools
+                  WebMCP Tools
                 </h3>
-                <p className="text-slate-400 text-sm">These tools are already registered and active on the live site.</p>
+                <p className="text-slate-400 text-sm">These tools are already active on the live site.</p>
               </div>
               
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -290,7 +290,7 @@ Return a strict JSON array of objects: \`{ name: string, description: string, pl
                   <Monitor className="mr-2 text-amber-400" />
                   Non-WebMCP Tools Detected
                 </h3>
-                <p className="text-slate-400 text-sm">We found interactive elements on the page that aren't WebMCP enabled. Here is the plug-and-play code to register them.</p>
+                <p className="text-slate-400 text-sm">We found interactive elements on the page that aren't WebMCP enabled. Here is the suggested code to enable them.</p>
               </div>
 
               {isGeneratingNonTools ? (
