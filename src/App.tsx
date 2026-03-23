@@ -5,7 +5,7 @@ import { motion } from 'motion/react';
 
 export default function App() {
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-200 font-sans flex flex-col relative overflow-x-hidden">
+    <div className="min-h-screen text-slate-200 flex flex-col relative">
       {/* Ambient Neon Glows */}
       <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-indigo-500/20 rounded-full blur-[120px] pointer-events-none" />
       <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-blue-500/20 rounded-full blur-[120px] pointer-events-none" />

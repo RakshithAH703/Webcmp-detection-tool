@@ -7,8 +7,11 @@
 }
 
 @layer base {
+  html {
+    scroll-behavior: smooth;
+  }
   body {
-    @apply font-sans antialiased;
+    @apply font-sans antialiased overflow-x-hidden bg-slate-950;
   }
 }
 
