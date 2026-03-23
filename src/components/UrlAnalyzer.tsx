@@ -219,6 +219,23 @@ Return a strict JSON array of objects: \`{ name: string, description: string, pl
           }}
           className="space-y-6"
         >
+          {/* Post-Scan Navigation UI */}
+          <motion.div variants={{ hidden: { opacity: 0, y: 10 }, visible: { opacity: 1, y: 0 } }} className="flex flex-col sm:flex-row gap-4 mb-2">
+            {(liveData.registeredTools && liveData.registeredTools.length > 0) && (
+              <button onClick={() => document.getElementById('webmcp-tools')?.scrollIntoView({ behavior: 'smooth' })} className="flex-1 px-6 py-4 bg-emerald-500/10 text-emerald-400 rounded-2xl hover:bg-emerald-500/20 transition-all border border-emerald-500/20 text-lg font-semibold shadow-lg hover:shadow-emerald-500/10 flex items-center justify-center space-x-3">
+                <CheckCircle2 size={24} />
+                <span>WebMCP Tools</span>
+              </button>
+            )}
+            {(liveData.actualNonTools && liveData.actualNonTools.length > 0) && (
+              <button onClick={() => document.getElementById('non-webmcp-tools')?.scrollIntoView({ behavior: 'smooth' })} className="flex-1 px-6 py-4 bg-amber-500/10 text-amber-400 rounded-2xl hover:bg-amber-500/20 transition-all border border-amber-500/20 text-lg font-semibold shadow-lg hover:shadow-amber-500/10 flex items-center justify-center space-x-3">
+                <Monitor size={24} />
+                <span>Non-WebMCP Tools</span>
+              </button>
+            )}
+          </motion.div>
+
+          {/* Header & Summary */}
           <motion.div 
             variants={{ hidden: { opacity: 0, y: 20 }, visible: { opacity: 1, y: 0 } }}
             className={`p-6 rounded-3xl border backdrop-blur-xl shadow-2xl ${liveData.enabled ? 'bg-emerald-400/10 border-emerald-400/20' : 'bg-red-500/10 border-red-500/20'}`}
@@ -232,20 +249,6 @@ Return a strict JSON array of objects: \`{ name: string, description: string, pl
                 ? `${liveData.registeredTools?.length || 0} out of ${(liveData.registeredTools?.length || 0) + (generatedNonTools ? generatedNonTools.length : (liveData.actualNonTools?.length || 0))} WebMCP tools detected.` 
                 : 'The navigator.modelContext API was not found on this page.'}
             </p>
-          </motion.div>
-
-          {/* Post-Scan Navigation UI */}
-          <motion.div variants={{ hidden: { opacity: 0, y: 10 }, visible: { opacity: 1, y: 0 } }} className="flex space-x-4 mt-4">
-            {(liveData.registeredTools && liveData.registeredTools.length > 0) && (
-              <button onClick={() => document.getElementById('webmcp-tools')?.scrollIntoView({ behavior: 'smooth' })} className="px-4 py-2 bg-emerald-500/10 text-emerald-400 rounded-lg hover:bg-emerald-500/20 transition-colors border border-emerald-500/20 text-sm font-medium">
-                WebMCP Tools
-              </button>
-            )}
-            {(liveData.actualNonTools && liveData.actualNonTools.length > 0) && (
-              <button onClick={() => document.getElementById('non-webmcp-tools')?.scrollIntoView({ behavior: 'smooth' })} className="px-4 py-2 bg-amber-500/10 text-amber-400 rounded-lg hover:bg-amber-500/20 transition-colors border border-amber-500/20 text-sm font-medium">
-                Non-WebMCP Tools
-              </button>
-            )}
           </motion.div>
 
           {liveData.enabled && liveData.registeredTools && liveData.registeredTools.length > 0 && (
