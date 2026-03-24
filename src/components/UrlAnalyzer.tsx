@@ -61,7 +61,13 @@ You must strictly curate this list based on what an AI Agent actually needs to i
 - Data Retrieval and Inspection (e.g., 'View Study', 'View Details', 'Compare', 'Reports')
 - Data Submission and Forms (e.g., 'Contact Us', 'Submit Form', 'Generate Report')
 
-STEP 2: GENERATE PRODUCTION-GRADE CODE
+STEP 2: MERGE DUPLICATES (CRITICAL)
+Merge similar actions into a single tool. For example:
+- "Find Doctors" + "Find a Doctor" -> ONE action
+- "Order Medicines" + "Buy Medicines" -> ONE action
+Ensure one action = one tool and no duplicates across the list.
+
+STEP 3: GENERATE PRODUCTION-GRADE CODE
 For the filtered list of high-value actions ONLY, generate the exact 'plug-and-play' JavaScript code to register the tool.
 1. Write modern Vanilla JavaScript wrapped in an initialization function (e.g., \`function init[ActionName]Tool() { ... }\`).
 2. Include graceful degradation: \`if (!('modelContext' in navigator)) return;\`
@@ -219,164 +225,94 @@ Return a strict JSON array of objects: \`{ name: string, description: string, pl
           }}
           className="space-y-6"
         >
-          {/* Post-Scan Navigation UI */}
-          <motion.div variants={{ hidden: { opacity: 0, y: 10 }, visible: { opacity: 1, y: 0 } }} className="flex flex-col sm:flex-row gap-4 mb-2">
-            {(liveData.registeredTools && liveData.registeredTools.length > 0) && (
-              <button onClick={() => document.getElementById('webmcp-tools')?.scrollIntoView({ behavior: 'smooth' })} className="flex-1 px-6 py-4 bg-emerald-500/10 text-emerald-400 rounded-2xl hover:bg-emerald-500/20 transition-all border border-emerald-500/20 text-lg font-semibold shadow-lg hover:shadow-emerald-500/10 flex items-center justify-center space-x-3">
-                <CheckCircle2 size={24} />
-                <span>WebMCP Tools</span>
-              </button>
-            )}
-            {(liveData.actualNonTools && liveData.actualNonTools.length > 0) && (
-              <button onClick={() => document.getElementById('non-webmcp-tools')?.scrollIntoView({ behavior: 'smooth' })} className="flex-1 px-6 py-4 bg-amber-500/10 text-amber-400 rounded-2xl hover:bg-amber-500/20 transition-all border border-amber-500/20 text-lg font-semibold shadow-lg hover:shadow-amber-500/10 flex items-center justify-center space-x-3">
-                <Monitor size={24} />
-                <span>Non-WebMCP Tools</span>
-              </button>
-            )}
-          </motion.div>
-
-          {/* Header & Summary */}
-          {(() => {
-            const webmcpTools = liveData.registeredTools?.length || 0;
-            const nonWebmcpTools = liveData.actualNonTools?.length || 0;
-            const totalTools = webmcpTools + nonWebmcpTools;
-            
-            return (
-              <motion.div 
-                variants={{ hidden: { opacity: 0, y: 20 }, visible: { opacity: 1, y: 0 } }}
-                className={`p-6 rounded-3xl border backdrop-blur-xl shadow-2xl ${webmcpTools > 0 ? 'bg-emerald-400/10 border-emerald-400/20' : 'bg-amber-500/10 border-amber-500/20'}`}
-              >
-                <h3 className={`text-xl font-bold flex items-center mb-3 ${webmcpTools > 0 ? 'text-emerald-400' : 'text-amber-400'}`}>
-                  {webmcpTools > 0 ? <CheckCircle2 className="mr-2" /> : <AlertTriangle className="mr-2" />}
-                  WebMCP Scan Results
-                </h3>
-                <div className={`space-y-2 ${webmcpTools > 0 ? 'text-emerald-400/90' : 'text-amber-400/90'}`}>
-                  {webmcpTools > 0 ? (
-                    <p className="text-lg">
-                      We detected <strong className="font-bold text-emerald-300">{totalTools} tools</strong> on your webpage. 
-                      Out of these, <strong className="font-bold text-emerald-300">{webmcpTools} tools are WebMCP-enabled</strong>.
-                    </p>
-                  ) : (
-                    <>
-                      <p className="text-lg">
-                        We detected <strong className="font-bold text-amber-300">{totalTools} tools</strong> on your webpage. 
-                        Out of these, <strong className="font-bold text-amber-300">none are WebMCP-enabled</strong>.
-                      </p>
-                      <p className="text-sm opacity-80 mt-2">
-                        Here is the suggested code to enable WebMCP for your tools.
-                      </p>
-                    </>
-                  )}
-                </div>
-              </motion.div>
-            );
-          })()}
-
-          {liveData.enabled && liveData.registeredTools && liveData.registeredTools.length > 0 && (
-            <motion.div id="webmcp-tools" variants={{ hidden: { opacity: 0, y: 20 }, visible: { opacity: 1, y: 0 } }} className="space-y-6 mt-8 scroll-mt-24">
-              <div className="bg-slate-900/40 backdrop-blur-xl border border-white/5 shadow-2xl rounded-3xl p-6">
-                <h3 className="text-xl font-bold text-slate-200 flex items-center mb-2">
-                  <CheckCircle2 className="mr-2 text-emerald-400" />
-                  WebMCP Tools
-                </h3>
-                <p className="text-slate-400 text-sm">These tools are already active on the live site.</p>
+          {isGeneratingNonTools ? (
+            <div className="flex flex-col items-center justify-center p-12 bg-slate-900/40 backdrop-blur-xl rounded-3xl border border-white/5 shadow-2xl space-y-4">
+              <div className="relative flex items-center justify-center w-12 h-12">
+                <div className="absolute inset-0 rounded-full border-t-2 border-amber-500 animate-spin"></div>
+                <div className="absolute inset-2 rounded-full border-r-2 border-orange-400 animate-spin animation-delay-150"></div>
               </div>
-              
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                {liveData.registeredTools.map((tool: any, idx: number) => (
-                  <motion.div 
-                    whileHover={{ scale: 1.02 }}
-                    key={idx} 
-                    className="bg-slate-900/40 backdrop-blur-xl p-5 rounded-2xl border border-white/5 shadow-2xl hover:border-emerald-400/30 transition-all"
-                  >
-                    <div className="flex items-center space-x-2 mb-2">
-                      <h4 className="font-bold text-slate-200">{tool.name || tool.title || 'Unnamed Tool'}</h4>
-                      <span className="flex items-center text-[10px] font-bold uppercase tracking-wider bg-emerald-400/10 text-emerald-400 border border-emerald-400/20 px-2 py-0.5 rounded-full">
-                        <span className="relative flex h-2 w-2 mr-1.5">
-                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                          <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
-                        </span>
-                        Active
-                      </span>
-                    </div>
-                    <p className="text-sm text-slate-400 mb-4">{tool.description || 'No description provided.'}</p>
-                  </motion.div>
-                ))}
-              </div>
-            </motion.div>
-          )}
-
-          {/* Generated Non-Tools Code */}
-          {liveData?.actualNonTools && liveData.actualNonTools.length > 0 && (
-            <motion.div id="non-webmcp-tools" variants={{ hidden: { opacity: 0, y: 20 }, visible: { opacity: 1, y: 0 } }} className="space-y-6 mt-8 scroll-mt-24">
-              <div className="bg-slate-900/40 backdrop-blur-xl border border-white/5 shadow-2xl rounded-3xl p-6">
-                <h3 className="text-xl font-bold text-slate-200 flex items-center mb-2">
-                  <Monitor className="mr-2 text-amber-400" />
-                  Non-WebMCP Tools Detected ({liveData.actualNonTools.length})
-                </h3>
-                <p className="text-slate-400 text-sm mb-4">These interactive elements were detected on the page but are not yet WebMCP-enabled.</p>
+              <span className="text-slate-400 font-mono text-sm animate-pulse">Analyzing elements for AI Agent actions...</span>
+            </div>
+          ) : (
+            <>
+              {/* Header & Summary */}
+              {(() => {
+                const webmcpTools = liveData.registeredTools?.length || 0;
+                const nonWebmcpTools = generatedNonTools?.length || 0;
+                const totalTools = webmcpTools + nonWebmcpTools;
                 
-                <div className="flex flex-wrap gap-2">
-                  {liveData.actualNonTools.map((toolName, idx) => (
-                    <span key={idx} className="px-2.5 py-1 bg-slate-800/50 text-slate-300 text-xs rounded-lg border border-slate-700/50">
-                      {toolName}
-                    </span>
-                  ))}
-                </div>
-              </div>
-
-              {isGeneratingNonTools ? (
-                <div className="flex flex-col items-center justify-center p-12 bg-slate-900/40 backdrop-blur-xl rounded-3xl border border-white/5 shadow-2xl space-y-4">
-                  <div className="relative flex items-center justify-center w-12 h-12">
-                    <div className="absolute inset-0 rounded-full border-t-2 border-amber-500 animate-spin"></div>
-                    <div className="absolute inset-2 rounded-full border-r-2 border-orange-400 animate-spin animation-delay-150"></div>
-                  </div>
-                  <span className="text-slate-400 font-mono text-sm animate-pulse">Analyzing elements for AI Agent actions...</span>
-                </div>
-              ) : generatedNonTools ? (
-                <div className="space-y-6">
-                  <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-2xl p-4 flex items-center">
-                    <Activity className="text-emerald-400 mr-3" size={24} />
-                    <div>
-                      <h4 className="text-emerald-400 font-bold">AI Analysis Complete</h4>
-                      <p className="text-emerald-400/80 text-sm">Filtered down to {generatedNonTools.length} high-value actionable tools for AI Agents.</p>
+                return (
+                  <motion.div 
+                    variants={{ hidden: { opacity: 0, y: 20 }, visible: { opacity: 1, y: 0 } }}
+                    className={`p-6 rounded-3xl border backdrop-blur-xl shadow-2xl ${webmcpTools > 0 ? 'bg-emerald-400/10 border-emerald-400/20' : 'bg-amber-500/10 border-amber-500/20'}`}
+                  >
+                    <h3 className={`text-xl font-bold flex items-center mb-3 ${webmcpTools > 0 ? 'text-emerald-400' : 'text-amber-400'}`}>
+                      {webmcpTools > 0 ? <CheckCircle2 className="mr-2" /> : <AlertTriangle className="mr-2" />}
+                      WebMCP Scan Results
+                    </h3>
+                    <div className={`space-y-2 ${webmcpTools > 0 ? 'text-emerald-400/90' : 'text-amber-400/90'}`}>
+                      {webmcpTools > 0 ? (
+                        <p className="text-lg">
+                          We identified <strong className="font-bold text-emerald-300">{totalTools} core actions</strong> in your application. 
+                          Out of these, <strong className="font-bold text-emerald-300">{webmcpTools} are WebMCP-enabled</strong> and <strong className="font-bold text-emerald-300">{nonWebmcpTools} are not yet enabled</strong>.
+                        </p>
+                      ) : (
+                        <p className="text-lg">
+                          We identified <strong className="font-bold text-amber-300">{totalTools} core actions</strong> in your application. 
+                          None of them are WebMCP-enabled.
+                        </p>
+                      )}
                     </div>
+                  </motion.div>
+                );
+              })()}
+
+              {/* Generated Non-Tools Code */}
+              {generatedNonTools && generatedNonTools.length > 0 && (
+                <motion.div variants={{ hidden: { opacity: 0, y: 20 }, visible: { opacity: 1, y: 0 } }} className="space-y-6 mt-8">
+                  <div className="bg-slate-900/40 backdrop-blur-xl border border-white/5 shadow-2xl rounded-3xl p-6">
+                    <h3 className="text-xl font-bold text-slate-200 flex items-center mb-2">
+                      <Monitor className="mr-2 text-amber-400" />
+                      Actions to Enable with WebMCP:
+                    </h3>
+                    <p className="text-slate-400 text-sm mb-4">These core actions are not yet WebMCP-enabled. Here is the suggested code to enable them.</p>
                   </div>
+
                   <div className="grid grid-cols-1 gap-6">
                     {generatedNonTools.map((tool, idx) => (
-                    <motion.div 
-                      whileHover={{ scale: 1.01 }}
-                      key={idx} 
-                      className="bg-slate-900/40 backdrop-blur-xl p-6 rounded-3xl border border-white/5 shadow-2xl hover:border-amber-500/30 transition-all"
-                    >
-                      <div className="flex items-center space-x-2 mb-2">
-                        <h4 className="font-bold text-slate-200">{tool.name}</h4>
-                        <span className="flex items-center text-[10px] font-bold uppercase tracking-wider bg-amber-500/10 text-amber-400 border border-amber-500/20 px-2 py-0.5 rounded-full">
-                          <AlertTriangle size={10} className="mr-1" /> Needs Implementation
-                        </span>
-                      </div>
-                      <p className="text-sm text-slate-400 mb-4">{tool.description}</p>
-                      
-                      <div className="bg-slate-950/80 rounded-xl overflow-hidden border border-white/10 mt-4 shadow-inner">
-                        <div className="px-4 py-2 bg-slate-900/80 border-b border-white/5 flex items-center justify-between">
-                          <span className="text-slate-400 text-xs font-mono">Suggested code for WebMCP enablement</span>
-                          <button 
-                            onClick={() => copyToClipboard(tool.plugAndPlayCode)}
-                            className="text-slate-400 hover:text-white transition-colors flex items-center text-xs bg-white/5 hover:bg-white/10 px-2 py-1 rounded-lg border border-white/5"
-                          >
-                            <Copy size={12} className="mr-1" /> Copy
-                          </button>
+                      <motion.div 
+                        whileHover={{ scale: 1.01 }}
+                        key={idx} 
+                        className="bg-slate-900/40 backdrop-blur-xl p-6 rounded-3xl border border-white/5 shadow-2xl hover:border-amber-500/30 transition-all"
+                      >
+                        <div className="flex items-center space-x-2 mb-2">
+                          <h4 className="font-bold text-slate-200">{tool.name}</h4>
+                          <span className="flex items-center text-[10px] font-bold uppercase tracking-wider bg-amber-500/10 text-amber-400 border border-amber-500/20 px-2 py-0.5 rounded-full">
+                            <AlertTriangle size={10} className="mr-1" /> Needs Implementation
+                          </span>
                         </div>
-                        <pre className="p-4 text-xs font-mono text-slate-300 overflow-x-auto whitespace-pre">
-                          <code>{tool.plugAndPlayCode}</code>
-                        </pre>
-                      </div>
-                    </motion.div>
-                  ))}
-                </div>
-              </div>
-              ) : null}
-            </motion.div>
+                        <p className="text-sm text-slate-400 mb-4">{tool.description}</p>
+                        
+                        <div className="bg-slate-950/80 rounded-xl overflow-hidden border border-white/10 mt-4 shadow-inner">
+                          <div className="px-4 py-2 bg-slate-900/80 border-b border-white/5 flex items-center justify-between">
+                            <span className="text-slate-400 text-xs font-mono">Suggested code for WebMCP enablement</span>
+                            <button 
+                              onClick={() => copyToClipboard(tool.plugAndPlayCode)}
+                              className="text-slate-400 hover:text-white transition-colors flex items-center text-xs bg-white/5 hover:bg-white/10 px-2 py-1 rounded-lg border border-white/5"
+                            >
+                              <Copy size={12} className="mr-1" /> Copy
+                            </button>
+                          </div>
+                          <pre className="p-4 text-xs font-mono text-slate-300 overflow-x-auto whitespace-pre">
+                            <code>{tool.plugAndPlayCode}</code>
+                          </pre>
+                        </div>
+                      </motion.div>
+                    ))}
+                  </div>
+                </motion.div>
+              )}
+            </>
           )}
         </motion.div>
       )}
