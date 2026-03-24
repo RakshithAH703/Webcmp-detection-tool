@@ -54,14 +54,21 @@ You must strictly curate this list based on what an AI Agent actually needs to i
 - Cookie banners (Accept, Deny, Settings)
 - Legal/Footer links (Privacy Policy, Terms, Disclaimer)
 - Pagination numbers and symbols (1, 2, 3, Next, Previous, ...)
-- Granular UI state toggles or specific values (e.g., '10 mi', 'Phase 1', 'Status Ascending')
+- Granular UI state toggles or specific values (e.g., '10 mi', 'Phase 1', 'Status Ascending', 'Apply', 'Clear')
 
 **MUST INCLUDE (Keep these high-value, agent-actionable features):**
-- Search and Querying (e.g., 'Search', 'Search Clinical Trials', 'Apply Filters')
+- Search and Querying (e.g., 'Search', 'Search Clinical Trials')
 - Data Retrieval and Inspection (e.g., 'View Study', 'View Details', 'Compare', 'Reports')
 - Data Submission and Forms (e.g., 'Contact Us', 'Submit Form', 'Generate Report')
+- Real product actions (e.g., 'Buy Medicines', 'Find Doctors', 'Lab Tests')
 
-STEP 2: GENERATE PRODUCTION-GRADE CODE
+STEP 2: REMOVE DUPLICATES AND MERGE
+- Merge similar actions into one single tool.
+- Examples: "Find Doctors" + "Find a Doctor" -> "Find Doctors"
+- "Order Medicines" + "Buy Medicines" -> "Buy Medicines"
+- Ensure one action = one tool, and no duplicates across categories.
+
+STEP 3: GENERATE PRODUCTION-GRADE CODE
 For the filtered list of high-value actions ONLY, generate the exact 'plug-and-play' JavaScript code to register the tool.
 1. Write modern Vanilla JavaScript wrapped in an initialization function (e.g., \`function init[ActionName]Tool() { ... }\`).
 2. Include graceful degradation: \`if (!('modelContext' in navigator)) return;\`
@@ -152,6 +159,10 @@ Return a strict JSON array of objects: \`{ name: string, description: string, pl
     }
   };
 
+  const webmcpTools = liveData?.registeredTools?.length || 0;
+  const nonWebmcpTools = generatedNonTools?.length || 0;
+  const totalFinalTools = webmcpTools + nonWebmcpTools;
+
   return (
     <div className="space-y-8">
       <div className="max-w-2xl mx-auto">
@@ -227,7 +238,7 @@ Return a strict JSON array of objects: \`{ name: string, description: string, pl
                 <span>WebMCP Tools</span>
               </button>
             )}
-            {(liveData.actualNonTools && liveData.actualNonTools.length > 0) && (
+            {(isGeneratingNonTools || (generatedNonTools && generatedNonTools.length > 0)) && (
               <button onClick={() => document.getElementById('non-webmcp-tools')?.scrollIntoView({ behavior: 'smooth' })} className="flex-1 px-6 py-4 bg-amber-500/10 text-amber-400 rounded-2xl hover:bg-amber-500/20 transition-all border border-amber-500/20 text-lg font-semibold shadow-lg hover:shadow-amber-500/10 flex items-center justify-center space-x-3">
                 <Monitor size={24} />
                 <span>Non-WebMCP Tools</span>
@@ -245,9 +256,15 @@ Return a strict JSON array of objects: \`{ name: string, description: string, pl
               {liveData.enabled ? 'WebMCP Enabled' : 'WebMCP Not Enabled'}
             </h3>
             <p className={liveData.enabled ? 'text-emerald-400/80' : 'text-red-400/80'}>
-              {liveData.enabled 
-                ? `${liveData.registeredTools?.length || 0} out of ${(liveData.registeredTools?.length || 0) + (generatedNonTools ? generatedNonTools.length : (liveData.actualNonTools?.length || 0))} WebMCP tools detected.` 
-                : 'The navigator.modelContext API was not found on this page.'}
+              {isGeneratingNonTools ? (
+                <span className="animate-pulse">Analyzing core actions...</span>
+              ) : (
+                liveData.enabled ? (
+                  <>We identified <strong>{totalFinalTools} core actions</strong> in your application. Out of these, <strong>{webmcpTools} are WebMCP-enabled</strong> and <strong>{nonWebmcpTools} are not yet enabled</strong>.</>
+                ) : (
+                  <>We identified <strong>{totalFinalTools} core actions</strong> in your application. None of them are WebMCP-enabled.</>
+                )
+              )}
             </p>
           </motion.div>
 
@@ -286,7 +303,7 @@ Return a strict JSON array of objects: \`{ name: string, description: string, pl
           )}
 
           {/* Generated Non-Tools Code */}
-          {liveData?.actualNonTools && liveData.actualNonTools.length > 0 && (
+          {(isGeneratingNonTools || (generatedNonTools && generatedNonTools.length > 0)) && (
             <motion.div id="non-webmcp-tools" variants={{ hidden: { opacity: 0, y: 20 }, visible: { opacity: 1, y: 0 } }} className="space-y-6 mt-8 scroll-mt-24">
               <div className="bg-slate-900/40 backdrop-blur-xl border border-white/5 shadow-2xl rounded-3xl p-6">
                 <h3 className="text-xl font-bold text-slate-200 flex items-center mb-2">
