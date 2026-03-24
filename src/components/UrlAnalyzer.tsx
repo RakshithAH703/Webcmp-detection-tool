@@ -20,18 +20,33 @@ export const UrlAnalyzer: React.FC = () => {
   const [isGeneratingNonTools, setIsGeneratingNonTools] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [messageIndex, setMessageIndex] = useState(0);
+  const [totalToolsDetected, setTotalToolsDetected] = useState<number | null>(null);
+  const [simulatedCount, setSimulatedCount] = useState(0);
 
   const scanMessages = ["Extracting DOM...", "Looking for WebMCP...", "Identifying tools..."];
 
   useEffect(() => {
     if (!isDetecting) {
       setMessageIndex(0);
+      setSimulatedCount(0);
       return;
     }
-    const interval = setInterval(() => {
+    const messageInterval = setInterval(() => {
       setMessageIndex((prev) => Math.min(prev + 1, scanMessages.length - 1));
     }, 2000);
-    return () => clearInterval(interval);
+    
+    const countInterval = setInterval(() => {
+      setSimulatedCount((prev) => {
+        const increment = Math.floor(Math.random() * 4) + 1;
+        if (prev > 85) return prev; // Cap the fake count so it doesn't look absurdly high
+        return prev + increment;
+      });
+    }, 400);
+    
+    return () => {
+      clearInterval(messageInterval);
+      clearInterval(countInterval);
+    };
   }, [isDetecting]);
 
   const copyToClipboard = (text: string) => {
@@ -117,6 +132,8 @@ Return a strict JSON array of objects: \`{ name: string, description: string, pl
     setError(null);
     setLiveData(null);
     setGeneratedNonTools(null);
+    setTotalToolsDetected(null);
+    setSimulatedCount(0);
 
     try {
       const response = await fetch('/api/detect-webmcp', {
@@ -134,6 +151,11 @@ Return a strict JSON array of objects: \`{ name: string, description: string, pl
       }
 
       const data = await response.json();
+      
+      // Lock the total tools detected BEFORE any filtering or generation
+      const webmcpCount = data.registeredTools?.length || 0;
+      const nonWebmcpCount = data.actualNonTools?.length || 0;
+      setTotalToolsDetected(webmcpCount + nonWebmcpCount);
       
       // Log Cleanup: Remove "register webmcp tool" from the detected tools
       if (data.actualNonTools) {
@@ -203,8 +225,11 @@ Return a strict JSON array of objects: \`{ name: string, description: string, pl
             <div className="absolute inset-4 rounded-full border-b-2 border-indigo-300 animate-spin animation-delay-300"></div>
             <ScanLine className="text-indigo-400 animate-pulse" size={20} />
           </div>
-          <div className="text-slate-400 font-mono text-sm animate-pulse">
-            {scanMessages[messageIndex]}
+          <div className="text-slate-400 font-mono text-sm animate-pulse flex flex-col items-center space-y-2">
+            <span>{scanMessages[messageIndex]}</span>
+            {simulatedCount > 0 && (
+              <span className="text-indigo-300 font-bold">{simulatedCount} tools detected...</span>
+            )}
           </div>
         </motion.div>
       )}
@@ -238,8 +263,7 @@ Return a strict JSON array of objects: \`{ name: string, description: string, pl
           {/* Header & Summary */}
           {(() => {
             const webmcpTools = liveData.registeredTools?.length || 0;
-            const nonWebmcpTools = generatedNonTools ? generatedNonTools.length : (liveData.actualNonTools?.length || 0);
-            const totalTools = webmcpTools + nonWebmcpTools;
+            const displayTotal = totalToolsDetected !== null ? totalToolsDetected : webmcpTools + (liveData.actualNonTools?.length || 0);
             
             return (
               <motion.div 
@@ -253,13 +277,13 @@ Return a strict JSON array of objects: \`{ name: string, description: string, pl
                 <div className={`space-y-2 ${webmcpTools > 0 ? 'text-emerald-400/90' : 'text-amber-400/90'}`}>
                   {webmcpTools > 0 ? (
                     <p className="text-lg">
-                      We detected <strong className="font-bold text-emerald-300">{totalTools} tools</strong> on your webpage. 
+                      We detected <strong className="font-bold text-emerald-300">{displayTotal} tools</strong> on your webpage. 
                       Out of these, <strong className="font-bold text-emerald-300">{webmcpTools} tools are WebMCP-enabled</strong>.
                     </p>
                   ) : (
                     <>
                       <p className="text-lg">
-                        We detected <strong className="font-bold text-amber-300">{totalTools} tools</strong> on your webpage. 
+                        We detected <strong className="font-bold text-amber-300">{displayTotal} tools</strong> on your webpage. 
                         Out of these, <strong className="font-bold text-amber-300">none are WebMCP-enabled</strong>.
                       </p>
                       <p className="text-sm opacity-80 mt-2">
@@ -323,7 +347,10 @@ Return a strict JSON array of objects: \`{ name: string, description: string, pl
                     <div className="absolute inset-0 rounded-full border-t-2 border-amber-500 animate-spin"></div>
                     <div className="absolute inset-2 rounded-full border-r-2 border-orange-400 animate-spin animation-delay-150"></div>
                   </div>
-                  <span className="text-slate-400 font-mono text-sm animate-pulse">Suggested code for WebMCP enablement...</span>
+                  <div className="flex flex-col items-center space-y-2">
+                    <span className="text-amber-400 font-bold text-lg">Detection complete: {totalToolsDetected} tools found.</span>
+                    <span className="text-slate-400 font-mono text-sm animate-pulse">Analyzing WebMCP capabilities & generating code...</span>
+                  </div>
                 </div>
               ) : generatedNonTools ? (
                 <div className="grid grid-cols-1 gap-6">
