@@ -236,41 +236,20 @@ Return a strict JSON array of objects: \`{ name: string, description: string, pl
           </motion.div>
 
           {/* Header & Summary */}
-          {(() => {
-            const webmcpTools = liveData.registeredTools?.length || 0;
-            const nonWebmcpTools = liveData.actualNonTools?.length || 0;
-            const totalTools = webmcpTools + nonWebmcpTools;
-            
-            return (
-              <motion.div 
-                variants={{ hidden: { opacity: 0, y: 20 }, visible: { opacity: 1, y: 0 } }}
-                className={`p-6 rounded-3xl border backdrop-blur-xl shadow-2xl ${webmcpTools > 0 ? 'bg-emerald-400/10 border-emerald-400/20' : 'bg-amber-500/10 border-amber-500/20'}`}
-              >
-                <h3 className={`text-xl font-bold flex items-center mb-3 ${webmcpTools > 0 ? 'text-emerald-400' : 'text-amber-400'}`}>
-                  {webmcpTools > 0 ? <CheckCircle2 className="mr-2" /> : <AlertTriangle className="mr-2" />}
-                  WebMCP Scan Results
-                </h3>
-                <div className={`space-y-2 ${webmcpTools > 0 ? 'text-emerald-400/90' : 'text-amber-400/90'}`}>
-                  {webmcpTools > 0 ? (
-                    <p className="text-lg">
-                      We detected <strong className="font-bold text-emerald-300">{totalTools} tools</strong> on your webpage. 
-                      Out of these, <strong className="font-bold text-emerald-300">{webmcpTools} tools are WebMCP-enabled</strong>.
-                    </p>
-                  ) : (
-                    <>
-                      <p className="text-lg">
-                        We detected <strong className="font-bold text-amber-300">{totalTools} tools</strong> on your webpage. 
-                        Out of these, <strong className="font-bold text-amber-300">none are WebMCP-enabled</strong>.
-                      </p>
-                      <p className="text-sm opacity-80 mt-2">
-                        Here is the suggested code to enable WebMCP for your tools.
-                      </p>
-                    </>
-                  )}
-                </div>
-              </motion.div>
-            );
-          })()}
+          <motion.div 
+            variants={{ hidden: { opacity: 0, y: 20 }, visible: { opacity: 1, y: 0 } }}
+            className={`p-6 rounded-3xl border backdrop-blur-xl shadow-2xl ${liveData.enabled ? 'bg-emerald-400/10 border-emerald-400/20' : 'bg-red-500/10 border-red-500/20'}`}
+          >
+            <h3 className={`text-xl font-bold flex items-center mb-2 ${liveData.enabled ? 'text-emerald-400' : 'text-red-400'}`}>
+              {liveData.enabled ? <CheckCircle2 className="mr-2" /> : <ServerCrash className="mr-2" />}
+              {liveData.enabled ? 'WebMCP Enabled' : 'WebMCP Not Enabled'}
+            </h3>
+            <p className={liveData.enabled ? 'text-emerald-400/80' : 'text-red-400/80'}>
+              {liveData.enabled 
+                ? `${liveData.registeredTools?.length || 0} out of ${(liveData.registeredTools?.length || 0) + (generatedNonTools ? generatedNonTools.length : (liveData.actualNonTools?.length || 0))} WebMCP tools detected.` 
+                : 'The navigator.modelContext API was not found on this page.'}
+            </p>
+          </motion.div>
 
           {liveData.enabled && liveData.registeredTools && liveData.registeredTools.length > 0 && (
             <motion.div id="webmcp-tools" variants={{ hidden: { opacity: 0, y: 20 }, visible: { opacity: 1, y: 0 } }} className="space-y-6 mt-8 scroll-mt-24">
@@ -312,17 +291,9 @@ Return a strict JSON array of objects: \`{ name: string, description: string, pl
               <div className="bg-slate-900/40 backdrop-blur-xl border border-white/5 shadow-2xl rounded-3xl p-6">
                 <h3 className="text-xl font-bold text-slate-200 flex items-center mb-2">
                   <Monitor className="mr-2 text-amber-400" />
-                  Non-WebMCP Tools Detected ({liveData.actualNonTools.length})
+                  Non-WebMCP Tools Detected
                 </h3>
-                <p className="text-slate-400 text-sm mb-4">These interactive elements were detected on the page but are not yet WebMCP-enabled.</p>
-                
-                <div className="flex flex-wrap gap-2">
-                  {liveData.actualNonTools.map((toolName, idx) => (
-                    <span key={idx} className="px-2.5 py-1 bg-slate-800/50 text-slate-300 text-xs rounded-lg border border-slate-700/50">
-                      {toolName}
-                    </span>
-                  ))}
-                </div>
+                <p className="text-slate-400 text-sm">We found interactive elements on the page that aren't WebMCP enabled. Here is the suggested code to enable them.</p>
               </div>
 
               {isGeneratingNonTools ? (
@@ -331,19 +302,11 @@ Return a strict JSON array of objects: \`{ name: string, description: string, pl
                     <div className="absolute inset-0 rounded-full border-t-2 border-amber-500 animate-spin"></div>
                     <div className="absolute inset-2 rounded-full border-r-2 border-orange-400 animate-spin animation-delay-150"></div>
                   </div>
-                  <span className="text-slate-400 font-mono text-sm animate-pulse">Analyzing elements for AI Agent actions...</span>
+                  <span className="text-slate-400 font-mono text-sm animate-pulse">Suggested code for WebMCP enablement...</span>
                 </div>
               ) : generatedNonTools ? (
-                <div className="space-y-6">
-                  <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-2xl p-4 flex items-center">
-                    <Activity className="text-emerald-400 mr-3" size={24} />
-                    <div>
-                      <h4 className="text-emerald-400 font-bold">AI Analysis Complete</h4>
-                      <p className="text-emerald-400/80 text-sm">Filtered down to {generatedNonTools.length} high-value actionable tools for AI Agents.</p>
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-1 gap-6">
-                    {generatedNonTools.map((tool, idx) => (
+                <div className="grid grid-cols-1 gap-6">
+                  {generatedNonTools.map((tool, idx) => (
                     <motion.div 
                       whileHover={{ scale: 1.01 }}
                       key={idx} 
@@ -374,7 +337,6 @@ Return a strict JSON array of objects: \`{ name: string, description: string, pl
                     </motion.div>
                   ))}
                 </div>
-              </div>
               ) : null}
             </motion.div>
           )}
