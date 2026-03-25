@@ -27,8 +27,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     const page = await browser.newPage();
     
-    // Wait until network is idle to ensure React/SPA apps mount and register tools
-    await page.goto(url, { waitUntil: 'networkidle0', timeout: 15000 });
+    // Use networkidle2 (more forgiving for sites with analytics/websockets)
+    // Set timeout to 8000ms to ensure we catch it before Vercel's 10s function limit
+    try {
+      await page.goto(url, { waitUntil: 'networkidle2', timeout: 8000 });
+    } catch (navError: any) {
+      console.warn(`Navigation warning for ${url}:`, navError.message);
+      // Continue execution: the DOM is likely loaded enough to extract elements
+    }
 
     // Execute script in the context of the loaded page
     const result = await page.evaluate(() => {
